@@ -7,7 +7,7 @@ require (
 	github.com/andybalholm/brotli v1.0.4
 	github.com/aryszka/jobqueue v0.0.2
 	github.com/cenkalti/backoff v2.2.1+incompatible
-	github.com/cespare/xxhash/v2 v2.1.2
+	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9
 	github.com/cjoudrey/gluaurl v0.0.0-20161028222611-31cbb9bef199
 	github.com/coreos/go-oidc v2.2.1+incompatible
@@ -17,7 +17,6 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f
 	github.com/dimfeld/httppath v0.0.0-20170720192232-ee938bf73598
 	github.com/ghodss/yaml v1.0.0
-	github.com/go-redis/redis/v9 v9.0.0-beta.1
 	github.com/golang-jwt/jwt/v4 v4.2.0
 	github.com/google/go-cmp v0.5.8
 	github.com/hashicorp/memberlist v0.3.0
@@ -30,10 +29,11 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.11.1
 	github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a
+	github.com/redis/go-redis/v9 v9.0.3
 	github.com/sarslanhan/cronmask v0.0.0-20190709075623-766eca24d011
 	github.com/sirupsen/logrus v1.8.1
 	github.com/sony/gobreaker v0.5.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/szuecs/rate-limit-buffer v0.9.0
 	github.com/testcontainers/testcontainers-go v0.12.0
 	github.com/tidwall/gjson v1.12.1
@@ -127,5 +127,3 @@ require (
 )
 
 go 1.19
-
-replace github.com/go-redis/redis/v9 => github.com/szuecs/redis/v9 v9.0.0-beta.1.0.20220801200609-6f7f800107ba
