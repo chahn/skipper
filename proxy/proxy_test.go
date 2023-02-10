@@ -2211,3 +2211,40 @@ func BenchmarkAccessLogEnablePrint(b *testing.B) {
 	benchmarkAccessLog(b, "enableAccessLog(1,200,3)", 200)
 }
 func BenchmarkAccessLogEnable(b *testing.B) { benchmarkAccessLog(b, "enableAccessLog(1,3)", 200) }
+
+type zeroReader struct{}
+
+func (zeroReader) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = 0
+	}
+	return len(p), nil
+}
+
+type nopFlusher struct {
+	io.Writer
+}
+
+func (nopFlusher) Flush() {}
+
+func BenchmarkCopyStream(b *testing.B) {
+	for _, size := range []int64{100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000} {
+		b.Run(fmt.Sprintf("size %d", size), func(b *testing.B) {
+			benchmarkCopyStream(b, size)
+		})
+	}
+}
+
+func benchmarkCopyStream(b *testing.B, size int64) {
+	from := io.LimitReader(zeroReader{}, size)
+	to := &nopFlusher{io.Discard}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := copyStream(to, from)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
