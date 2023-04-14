@@ -24,6 +24,7 @@ type flushedResponseWriter interface {
 
 type context struct {
 	responseWriter       flushedResponseWriter
+	responseController   *http.ResponseController
 	request              *http.Request
 	response             *http.Response
 	route                *routing.Route
@@ -133,13 +134,14 @@ func newContext(
 	p *Proxy,
 ) *context {
 	c := &context{
-		responseWriter: w,
-		request:        r,
-		stateBag:       make(map[string]interface{}),
-		outgoingHost:   r.Host,
-		metrics:        &filterMetrics{impl: p.metrics},
-		proxy:          p,
-		routeLookup:    p.routing.Get(),
+		responseWriter:     w,
+		responseController: http.NewResponseController(w),
+		request:            r,
+		stateBag:           make(map[string]interface{}),
+		outgoingHost:       r.Host,
+		metrics:            &filterMetrics{impl: p.metrics},
+		proxy:              p,
+		routeLookup:        p.routing.Get(),
 	}
 
 	if p.flags.PreserveOriginal() {
@@ -190,21 +192,22 @@ func (c *context) setResponse(r *http.Response, preserveOriginal bool) {
 	}
 }
 
-func (c *context) ResponseWriter() http.ResponseWriter { return c.responseWriter }
-func (c *context) Request() *http.Request              { return c.request }
-func (c *context) Response() *http.Response            { return c.response }
-func (c *context) MarkServed()                         { c.deprecatedServed = true }
-func (c *context) Served() bool                        { return c.deprecatedServed || c.servedWithResponse }
-func (c *context) PathParam(key string) string         { return c.pathParams[key] }
-func (c *context) StateBag() map[string]interface{}    { return c.stateBag }
-func (c *context) BackendUrl() string                  { return c.route.Backend }
-func (c *context) OriginalRequest() *http.Request      { return c.originalRequest }
-func (c *context) OriginalResponse() *http.Response    { return c.originalResponse }
-func (c *context) OutgoingHost() string                { return c.outgoingHost }
-func (c *context) SetOutgoingHost(h string)            { c.outgoingHost = h }
-func (c *context) Metrics() filters.Metrics            { return c.metrics }
-func (c *context) Tracer() opentracing.Tracer          { return c.tracer }
-func (c *context) ParentSpan() opentracing.Span        { return c.parentSpan }
+func (c *context) ResponseWriter() http.ResponseWriter          { return c.responseWriter }
+func (c *context) ResponseController() *http.ResponseController { return c.responseController }
+func (c *context) Request() *http.Request                       { return c.request }
+func (c *context) Response() *http.Response                     { return c.response }
+func (c *context) MarkServed()                                  { c.deprecatedServed = true }
+func (c *context) Served() bool                                 { return c.deprecatedServed || c.servedWithResponse }
+func (c *context) PathParam(key string) string                  { return c.pathParams[key] }
+func (c *context) StateBag() map[string]interface{}             { return c.stateBag }
+func (c *context) BackendUrl() string                           { return c.route.Backend }
+func (c *context) OriginalRequest() *http.Request               { return c.originalRequest }
+func (c *context) OriginalResponse() *http.Response             { return c.originalResponse }
+func (c *context) OutgoingHost() string                         { return c.outgoingHost }
+func (c *context) SetOutgoingHost(h string)                     { c.outgoingHost = h }
+func (c *context) Metrics() filters.Metrics                     { return c.metrics }
+func (c *context) Tracer() opentracing.Tracer                   { return c.tracer }
+func (c *context) ParentSpan() opentracing.Span                 { return c.parentSpan }
 
 func (c *context) Serve(r *http.Response) {
 	r.Request = c.Request()

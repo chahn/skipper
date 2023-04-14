@@ -21,6 +21,7 @@ type Filter struct {
 // Simple FilterContext implementation.
 type Context struct {
 	FResponseWriter     http.ResponseWriter
+	FResponseController *http.ResponseController
 	FRequest            *http.Request
 	FResponse           *http.Response
 	FServed             bool
@@ -37,19 +38,20 @@ func (spec *Filter) Name() string                    { return spec.FilterName }
 func (f *Filter) Request(ctx filters.FilterContext)  {}
 func (f *Filter) Response(ctx filters.FilterContext) {}
 
-func (fc *Context) ResponseWriter() http.ResponseWriter { return fc.FResponseWriter }
-func (fc *Context) Request() *http.Request              { return fc.FRequest }
-func (fc *Context) Response() *http.Response            { return fc.FResponse }
-func (fc *Context) MarkServed()                         { fc.FServed = true }
-func (fc *Context) Served() bool                        { return fc.FServed }
-func (fc *Context) PathParam(key string) string         { return fc.FParams[key] }
-func (fc *Context) StateBag() map[string]interface{}    { return fc.FStateBag }
-func (fc *Context) OriginalRequest() *http.Request      { return nil }
-func (fc *Context) OriginalResponse() *http.Response    { return nil }
-func (fc *Context) BackendUrl() string                  { return fc.FBackendUrl }
-func (fc *Context) OutgoingHost() string                { return fc.FOutgoingHost }
-func (fc *Context) SetOutgoingHost(h string)            { fc.FOutgoingHost = h }
-func (fc *Context) Metrics() filters.Metrics            { return fc.FMetrics }
+func (fc *Context) ResponseWriter() http.ResponseWriter          { return fc.FResponseWriter }
+func (fc *Context) ResponseController() *http.ResponseController { return fc.FResponseController }
+func (fc *Context) Request() *http.Request                       { return fc.FRequest }
+func (fc *Context) Response() *http.Response                     { return fc.FResponse }
+func (fc *Context) MarkServed()                                  { fc.FServed = true }
+func (fc *Context) Served() bool                                 { return fc.FServed }
+func (fc *Context) PathParam(key string) string                  { return fc.FParams[key] }
+func (fc *Context) StateBag() map[string]interface{}             { return fc.FStateBag }
+func (fc *Context) OriginalRequest() *http.Request               { return nil }
+func (fc *Context) OriginalResponse() *http.Response             { return nil }
+func (fc *Context) BackendUrl() string                           { return fc.FBackendUrl }
+func (fc *Context) OutgoingHost() string                         { return fc.FOutgoingHost }
+func (fc *Context) SetOutgoingHost(h string)                     { fc.FOutgoingHost = h }
+func (fc *Context) Metrics() filters.Metrics                     { return fc.FMetrics }
 func (fc *Context) Tracer() opentracing.Tracer {
 	if fc.FTracer != nil {
 		return fc.FTracer
@@ -61,6 +63,9 @@ func (fc *Context) ParentSpan() opentracing.Span {
 }
 
 func (fc *Context) Serve(resp *http.Response) {
+	if fc.FResponseWriter != nil {
+		fc.FResponseController = http.NewResponseController(fc.FResponseWriter)
+	}
 	fc.FServedWithResponse = true
 	fc.FResponse = resp
 	fc.FServed = true

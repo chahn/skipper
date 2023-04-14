@@ -6,22 +6,56 @@ import (
 	"github.com/zalando/skipper/filters"
 )
 
+type timeoutType int
+
+const (
+	requestTimeout timeoutType = iota + 1
+	readTimeout
+	writeTimeout
+)
+
 type timeout struct {
+	typ     timeoutType
 	timeout time.Duration
 }
 
 func NewBackendTimeout() filters.Spec {
-	return &timeout{}
+	return &timeout{
+		typ: requestTimeout,
+	}
 }
 
-func (*timeout) Name() string { return filters.BackendTimeoutName }
+func NewReadTimeout() filters.Spec {
+	return &timeout{
+		typ: readTimeout,
+	}
+}
 
-func (*timeout) CreateFilter(args []interface{}) (filters.Filter, error) {
+func NewWriteTimeout() filters.Spec {
+	return &timeout{
+		typ: writeTimeout,
+	}
+}
+
+func (t *timeout) Name() string {
+	switch t.typ {
+	case requestTimeout:
+		return filters.BackendTimeoutName
+	case readTimeout:
+		return filters.ReadTimeoutName
+	case writeTimeout:
+		return filters.WriteTimeoutName
+	}
+	return "unknownFilter"
+}
+
+func (t *timeout) CreateFilter(args []interface{}) (filters.Filter, error) {
 	if len(args) != 1 {
 		return nil, filters.ErrInvalidFilterParameters
 	}
 
 	var tf timeout
+	tf.typ = t.typ
 	switch v := args[0].(type) {
 	case string:
 		d, err := time.ParseDuration(v)
@@ -37,9 +71,29 @@ func (*timeout) CreateFilter(args []interface{}) (filters.Filter, error) {
 	return &tf, nil
 }
 
+// Request timeout allows overwrite.
+//
+// Type request timeout set the timeout for the backend roundtrip.
+//
+// Type read timeout sets the timeout to read the request including the body.
+// It uses http.ResponseController to SetReadDeadline().
 func (t *timeout) Request(ctx filters.FilterContext) {
-	// allows overwrite
-	ctx.StateBag()[filters.BackendTimeout] = t.timeout
+	switch t.typ {
+	case requestTimeout:
+		ctx.StateBag()[filters.BackendTimeout] = t.timeout
+	case readTimeout:
+		ctx.ResponseController().SetReadDeadline(time.Now().Add(t.timeout))
+	}
 }
 
-func (t *timeout) Response(filters.FilterContext) {}
+// Response timeout allows overwrite.
+//
+// Type write timeout allows to set a timeout for writing the response.
+// It uses http.ResponseController to SetWriteDeadline().
+func (t *timeout) Response(ctx filters.FilterContext) {
+	switch t.typ {
+	case writeTimeout:
+		ctx.ResponseController().SetWriteDeadline(time.Now().Add(t.timeout))
+	}
+
+}

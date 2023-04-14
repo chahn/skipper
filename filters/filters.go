@@ -31,12 +31,16 @@ const (
 	BackendRatelimit = "backend:ratelimit"
 )
 
-// Context object providing state and information that is unique to a request.
+// FilterContext object providing state and information that is unique to a request.
 type FilterContext interface {
 	// The response writer object belonging to the incoming request. Used by
 	// filters that handle the requests themselves.
 	// Deprecated: use Response() or Serve()
 	ResponseWriter() http.ResponseWriter
+
+	// ResponseController returns the http.ResponseController
+	// attached to the current request processing.
+	ResponseController() *http.ResponseController
 
 	// The incoming request object. It is forwarded to the route endpoint
 	// with its properties changed by the filters.
@@ -228,6 +232,8 @@ const (
 	WrapContentName                            = "wrapContent"
 	WrapContentHexName                         = "wrapContentHex"
 	BackendTimeoutName                         = "backendTimeout"
+	ReadTimeoutName                            = "readTimeout"
+	WriteTimeoutName                           = "writeTimeout"
 	BlockName                                  = "blockContent"
 	LatencyName                                = "latency"
 	BandwidthName                              = "bandwidth"
