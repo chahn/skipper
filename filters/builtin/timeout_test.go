@@ -78,17 +78,40 @@ func TestFilterTimeouts(t *testing.T) {
 			name:     "ReadTimeout smaller than reading time should timeout",
 			args:     "15ms",
 			filter:   NewReadTimeout().(*timeout),
-			workTime: 10 * time.Millisecond,
-			want:     http.StatusGatewayTimeout,
+			workTime: 5 * time.Millisecond,
+			want:     499,
 			wantErr:  false,
 		}} {
 		t.Run(tt.name, func(t *testing.T) {
 			backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if tt.filter.typ == requestTimeout {
+				switch tt.filter.typ {
+				case requestTimeout:
 					time.Sleep(tt.workTime)
 				}
-				io.Copy(ioutil.Discard, r.Body)
-				r.Body.Close()
+
+				defer r.Body.Close()
+
+				_, err := io.Copy(ioutil.Discard, r.Body)
+				if err != nil {
+					t.Logf("body read timeout: %v", err)
+					w.WriteHeader(499)
+					w.Write([]byte("client timeout: " + err.Error()))
+					return
+				}
+
+				ctx := r.Context()
+				select {
+				case <-ctx.Done():
+					if err := ctx.Err(); err != nil {
+						t.Logf("backend handler observes error form context: %v", err)
+						w.WriteHeader(498) // ???
+						w.Write([]byte("context error: " + err.Error()))
+						return
+					}
+				default:
+					t.Log("default")
+				}
+
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte("OK"))
 			}))
@@ -101,6 +124,7 @@ func TestFilterTimeouts(t *testing.T) {
 			proxy := proxytest.New(fr, r)
 			defer proxy.Close()
 			reqURL, err := url.Parse(proxy.URL)
+			//reqURL, err := url.Parse(backend.URL)
 			if err != nil {
 				t.Fatalf("Failed to parse url %s: %v", proxy.URL, err)
 			}

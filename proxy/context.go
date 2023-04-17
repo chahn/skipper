@@ -20,6 +20,8 @@ const unknownHost = "_unknownhost_"
 type flushedResponseWriter interface {
 	http.ResponseWriter
 	http.Flusher
+	SetReadDeadline(time.Time) error
+	SetWriteDeadline(time.Time) error
 }
 
 type context struct {
@@ -328,5 +330,7 @@ func (w noopFlushedResponseWriter) Header() http.Header {
 func (w noopFlushedResponseWriter) Write([]byte) (int, error) {
 	return 0, nil
 }
-func (w noopFlushedResponseWriter) WriteHeader(_ int) {}
-func (w noopFlushedResponseWriter) Flush()            {}
+func (w noopFlushedResponseWriter) WriteHeader(_ int)                {}
+func (w noopFlushedResponseWriter) Flush()                           {}
+func (w noopFlushedResponseWriter) SetReadDeadline(time.Time) error  { return nil }
+func (w noopFlushedResponseWriter) SetWriteDeadline(time.Time) error { return nil }

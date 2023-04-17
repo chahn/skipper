@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 )
 
 type LoggingWriter struct {
@@ -45,6 +46,14 @@ func (lw *LoggingWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return hij.Hijack()
 	}
 	return nil, nil, fmt.Errorf("could not hijack connection")
+}
+
+func (lw *LoggingWriter) SetReadDeadline(deadline time.Time) error {
+	return http.NewResponseController(lw.writer).SetReadDeadline(deadline)
+}
+
+func (lw *LoggingWriter) SetWriteDeadline(deadline time.Time) error {
+	return http.NewResponseController(lw.writer).SetWriteDeadline(deadline)
 }
 
 func (lw *LoggingWriter) GetBytes() int64 {

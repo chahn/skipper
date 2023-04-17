@@ -3,6 +3,7 @@ package builtin
 import (
 	"time"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/zalando/skipper/filters"
 )
 
@@ -82,7 +83,10 @@ func (t *timeout) Request(ctx filters.FilterContext) {
 	case requestTimeout:
 		ctx.StateBag()[filters.BackendTimeout] = t.timeout
 	case readTimeout:
-		ctx.ResponseController().SetReadDeadline(time.Now().Add(t.timeout))
+		err := ctx.ResponseController().SetReadDeadline(time.Now().Add(t.timeout))
+		if err != nil {
+			log.Errorf("Failed to set read deadline: %v", err)
+		}
 	}
 }
 
@@ -93,7 +97,10 @@ func (t *timeout) Request(ctx filters.FilterContext) {
 func (t *timeout) Response(ctx filters.FilterContext) {
 	switch t.typ {
 	case writeTimeout:
-		ctx.ResponseController().SetWriteDeadline(time.Now().Add(t.timeout))
+		err := ctx.ResponseController().SetWriteDeadline(time.Now().Add(t.timeout))
+		if err != nil {
+			log.Errorf("Failed to set write deadline: %v", err)
+		}
 	}
 
 }
