@@ -23,24 +23,25 @@ type luaContext struct {
 	outgoingHost string
 }
 
-func (l *luaContext) ResponseWriter() http.ResponseWriter   { return nil }
-func (l *luaContext) Request() *http.Request                { return l.request }
-func (l *luaContext) Response() *http.Response              { return l.response }
-func (l *luaContext) OriginalRequest() *http.Request        { return nil }
-func (l *luaContext) OriginalResponse() *http.Response      { return nil }
-func (l *luaContext) Served() bool                          { return false }
-func (l *luaContext) MarkServed()                           {}
-func (l *luaContext) Serve(_ *http.Response)                {}
-func (l *luaContext) PathParam(n string) string             { return l.pathParams[n] }
-func (l *luaContext) StateBag() map[string]interface{}      { return l.bag }
-func (l *luaContext) BackendUrl() string                    { return "" }
-func (l *luaContext) OutgoingHost() string                  { return l.outgoingHost }
-func (l *luaContext) SetOutgoingHost(h string)              { l.outgoingHost = h }
-func (l *luaContext) Metrics() filters.Metrics              { return nil }
-func (l *luaContext) Tracer() opentracing.Tracer            { return nil }
-func (l *luaContext) ParentSpan() opentracing.Span          { return nil }
-func (l *luaContext) Split() (filters.FilterContext, error) { return nil, nil }
-func (l *luaContext) Loopback()                             {}
+func (l *luaContext) ResponseWriter() http.ResponseWriter          { return nil }
+func (l *luaContext) ResponseController() *http.ResponseController { return nil }
+func (l *luaContext) Request() *http.Request                       { return l.request }
+func (l *luaContext) Response() *http.Response                     { return l.response }
+func (l *luaContext) OriginalRequest() *http.Request               { return nil }
+func (l *luaContext) OriginalResponse() *http.Response             { return nil }
+func (l *luaContext) Served() bool                                 { return false }
+func (l *luaContext) MarkServed()                                  {}
+func (l *luaContext) Serve(_ *http.Response)                       {}
+func (l *luaContext) PathParam(n string) string                    { return l.pathParams[n] }
+func (l *luaContext) StateBag() map[string]interface{}             { return l.bag }
+func (l *luaContext) BackendUrl() string                           { return "" }
+func (l *luaContext) OutgoingHost() string                         { return l.outgoingHost }
+func (l *luaContext) SetOutgoingHost(h string)                     { l.outgoingHost = h }
+func (l *luaContext) Metrics() filters.Metrics                     { return nil }
+func (l *luaContext) Tracer() opentracing.Tracer                   { return nil }
+func (l *luaContext) ParentSpan() opentracing.Span                 { return nil }
+func (l *luaContext) Split() (filters.FilterContext, error)        { return nil, nil }
+func (l *luaContext) Loopback()                                    {}
 
 type testContext struct {
 	script         string

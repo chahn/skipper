@@ -3,7 +3,6 @@ package builtin
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -91,7 +90,7 @@ func TestFilterTimeouts(t *testing.T) {
 
 				defer r.Body.Close()
 
-				_, err := io.Copy(ioutil.Discard, r.Body)
+				_, err := io.Copy(io.Discard, r.Body)
 				if err != nil {
 					t.Logf("body read timeout: %v", err)
 					w.WriteHeader(499)
