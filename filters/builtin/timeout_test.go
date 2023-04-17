@@ -80,12 +80,43 @@ func TestFilterTimeouts(t *testing.T) {
 			workTime: 5 * time.Millisecond,
 			want:     499,
 			wantErr:  false,
+		}, {
+			name:     "WriteTimeout bigger than writing time should return 200",
+			args:     "1s",
+			filter:   NewWriteTimeout().(*timeout),
+			workTime: 10 * time.Millisecond,
+			want:     http.StatusOK,
+			wantErr:  false,
+		}, {
+			name:     "WriteTimeout smaller than writing time should timeout",
+			args:     "15ms",
+			filter:   NewWriteTimeout().(*timeout),
+			workTime: 5 * time.Millisecond,
+			want:     499,
+			wantErr:  false,
 		}} {
 		t.Run(tt.name, func(t *testing.T) {
 			backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch tt.filter.typ {
 				case requestTimeout:
 					time.Sleep(tt.workTime)
+				case writeTimeout:
+					buf := &slowReader{
+						data: bytes.NewBufferString("abcdefghijklmn"),
+						d:    tt.workTime,
+					}
+					w.WriteHeader(http.StatusOK)
+					_, err := w.Write(buf.data.Bytes())
+					if err != nil {
+						t.Logf("Failed to write: %v", err)
+					}
+
+					defer r.Body.Close()
+					_, err = io.Copy(io.Discard, r.Body)
+					if err != nil {
+						t.Logf("Failed to copy body: %v", err)
+					}
+					return
 				}
 
 				defer r.Body.Close()
