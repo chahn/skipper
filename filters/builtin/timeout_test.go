@@ -89,11 +89,11 @@ func TestFilterTimeouts(t *testing.T) {
 			wantErr:  false,
 		}, {
 			name:     "WriteTimeout smaller than writing time should timeout",
-			args:     "15ms",
+			args:     "25ms",
 			filter:   NewWriteTimeout().(*timeout),
 			workTime: 5 * time.Millisecond,
-			want:     499,
-			wantErr:  false,
+			want:     200,
+			wantErr:  true,
 		}} {
 		t.Run(tt.name, func(t *testing.T) {
 			backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -101,21 +101,21 @@ func TestFilterTimeouts(t *testing.T) {
 				case requestTimeout:
 					time.Sleep(tt.workTime)
 				case writeTimeout:
-					buf := &slowReader{
-						data: bytes.NewBufferString("abcdefghijklmn"),
-						d:    tt.workTime,
-					}
-					w.WriteHeader(http.StatusOK)
-					_, err := w.Write(buf.data.Bytes())
-					if err != nil {
-						t.Logf("Failed to write: %v", err)
-					}
-
-					defer r.Body.Close()
-					_, err = io.Copy(io.Discard, r.Body)
+					r.Body.Close()
+					_, err := io.Copy(io.Discard, r.Body)
 					if err != nil {
 						t.Logf("Failed to copy body: %v", err)
 					}
+
+					writer := newLimitWriter(w, 2, tt.workTime)
+					w.WriteHeader(http.StatusOK)
+					now := time.Now()
+					n, err := writer.Write([]byte("abcdefghijklmnopq"))
+					if err != nil {
+						t.Logf("Failed to write: %v", err)
+					}
+					t.Logf("Wrote %d bytes, %s", n, time.Since(now))
+
 					return
 				}
 
@@ -154,7 +154,6 @@ func TestFilterTimeouts(t *testing.T) {
 			proxy := proxytest.New(fr, r)
 			defer proxy.Close()
 			reqURL, err := url.Parse(proxy.URL)
-			//reqURL, err := url.Parse(backend.URL)
 			if err != nil {
 				t.Fatalf("Failed to parse url %s: %v", proxy.URL, err)
 			}
@@ -164,6 +163,8 @@ func TestFilterTimeouts(t *testing.T) {
 
 			var req *http.Request
 			switch tt.filter.typ {
+			case writeTimeout:
+				fallthrough
 			case requestTimeout:
 				req, err = http.NewRequest("GET", reqURL.String(), nil)
 				if err != nil {
@@ -181,13 +182,33 @@ func TestFilterTimeouts(t *testing.T) {
 			}
 
 			rsp, err := client.Do(req)
+
+			// test write timeout
+			if tt.wantErr && tt.filter.typ == writeTimeout {
+				if rsp != nil {
+					t.Fatal("rsp should be nil")
+				}
+				if err == nil {
+					t.Fatalf("write timeout should cause a response error")
+				}
+
+				t.Logf("response error: %v", err)
+				return
+			}
+
 			if err != nil {
 				t.Fatal(err)
 			}
+
 			defer rsp.Body.Close()
 
 			if rsp.StatusCode != tt.want {
 				t.Fatalf("Failed to get %d, got %d", tt.want, rsp.StatusCode)
+			}
+			_, err = io.Copy(io.Discard, rsp.Body)
+			if err != nil {
+				t.Fatalf("Failed to read response body: %v", err)
+
 			}
 		})
 	}
@@ -204,4 +225,44 @@ func (sr *slowReader) Read(b []byte) (int, error) {
 	n, err := r.Read(b)
 	time.Sleep(sr.d)
 	return n, err
+}
+
+// limitWriter is a modified copy from
+// https://skia.googlesource.com/buildbot/+/a2c929bb01b6/go/util/limitwriter/limitwriter.go,
+// which is licensed as BSD-3-Clause accoding to
+// https://pkg.go.dev/go.skia.org/infra/go/util/limitwriter?tab=licenses
+// with a change to accessibility.
+//
+// LimitWriter implements io.Writer and writes the data to an
+// io.Writer, but limits the total bytes written to it, dropping the
+// remaining bytes on the floor.
+type limitWriter struct {
+	dst   io.Writer
+	limit int
+	d     time.Duration
+}
+
+// New create a new LimitWriter that accepts at most 'limit' bytes.
+func newLimitWriter(dst io.Writer, limit int, d time.Duration) *limitWriter {
+	return &limitWriter{
+		dst:   dst,
+		limit: limit,
+		d:     d,
+	}
+}
+func (l *limitWriter) Write(p []byte) (int, error) {
+	var err error
+	lp := len(p)
+	i := l.limit
+	for n := lp; n > 0; n -= i {
+		if l.limit > 0 {
+			if lp > l.limit {
+				p = p[:l.limit]
+			}
+			l.limit -= len(p)
+			_, err = l.dst.Write(p)
+		}
+		time.Sleep(l.d)
+	}
+	return lp, err
 }

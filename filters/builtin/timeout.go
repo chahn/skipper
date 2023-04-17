@@ -78,6 +78,9 @@ func (t *timeout) CreateFilter(args []interface{}) (filters.Filter, error) {
 //
 // Type read timeout sets the timeout to read the request including the body.
 // It uses http.ResponseController to SetReadDeadline().
+//
+// Type write timeout allows to set a timeout for writing the response.
+// It uses http.ResponseController to SetWriteDeadline().
 func (t *timeout) Request(ctx filters.FilterContext) {
 	switch t.typ {
 	case requestTimeout:
@@ -87,20 +90,12 @@ func (t *timeout) Request(ctx filters.FilterContext) {
 		if err != nil {
 			log.Errorf("Failed to set read deadline: %v", err)
 		}
-	}
-}
-
-// Response timeout allows overwrite.
-//
-// Type write timeout allows to set a timeout for writing the response.
-// It uses http.ResponseController to SetWriteDeadline().
-func (t *timeout) Response(ctx filters.FilterContext) {
-	switch t.typ {
 	case writeTimeout:
 		err := ctx.ResponseController().SetWriteDeadline(time.Now().Add(t.timeout))
 		if err != nil {
 			log.Errorf("Failed to set write deadline: %v", err)
 		}
 	}
-
 }
+
+func (*timeout) Response(filters.FilterContext) {}
