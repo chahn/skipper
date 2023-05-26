@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -163,14 +164,17 @@ func DeleteDataFrom(prefix, key string) error {
 }
 
 // Saves a route in etcd with the prefix '/skippertest'.
-func PutData(key, data string) error {
-	return PutDataTo("/skippertest", key, data)
+func PutData(key, data string, ttl ...int) error {
+	return PutDataTo("/skippertest", key, data, ttl...)
 }
 
 // Saves a route in etcd with the specified prefix.
-func PutDataTo(prefix, key, data string) error {
+func PutDataTo(prefix, key, data string, ttl ...int) error {
 	v := make(url.Values)
 	v.Add("value", data)
+	if len(ttl) > 0 {
+		v.Add("ttl", strconv.Itoa(ttl[0]))
+	}
 	req, err := http.NewRequest("PUT",
 		Urls[0]+"/v2/keys/skippertest/routes/"+key,
 		bytes.NewBufferString(v.Encode()))

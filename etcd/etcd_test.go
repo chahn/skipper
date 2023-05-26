@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/zalando/skipper/eskip"
 	"github.com/zalando/skipper/etcd/etcdtest"
@@ -307,6 +308,50 @@ func TestReceiveInsert(t *testing.T) {
 
 	if len(ds) != 0 {
 		t.Error("unexpected delete")
+	}
+}
+
+func TestReceiveExpire(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
+	if err := etcdtest.DeleteAll(); err != nil {
+		t.Error(err)
+		return
+	}
+
+	c, err := New(Options{etcdtest.Urls, "/skippertest", 0, false, "", "", ""})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	c.LoadAll()
+
+	// Will expire after a TTL of 1 second
+	etcdtest.PutData("pdp", `Path("/pdp") -> "https://expire.example.org"`, 1)
+
+	// Wait until the route is expired with a timeout of 5 seconds
+	timeout := time.After(5 * time.Second)
+	for {
+		select {
+		case <-timeout:
+			t.Errorf("Timeout: route should expire after 1 second but did not expire within 5 seconds")
+			return
+		default:
+			rs, es, err := c.LoadUpdate()
+			if err != nil {
+				t.Error(err)
+				return
+			}
+
+			if checkDeleted(es, "pdp") {
+				if len(rs) != 0 {
+					t.Error("unexpected upsert")
+				}
+				return
+			}
+		}
 	}
 }
 
